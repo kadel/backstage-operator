@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -35,9 +36,12 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	ctrlruntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	//+kubebuilder:scaffold:imports
@@ -56,7 +60,55 @@ func init() {
 	//+kubebuilder:scaffold:scheme
 }
 
+var i = 0
+
 func main() {
+
+	setClusterRouterBase := hook.PreHookFunc(func(obj *unstructured.Unstructured, vals chartutil.Values, log logr.Logger) error {
+
+		log.Info(fmt.Sprintf("PreHook: setting cluster router base based on ingress config"))
+
+		cl, err := client.New(config.GetConfigOrDie(), client.Options{})
+		if err != nil {
+			return err
+		}
+
+		ingressConfig := &unstructured.Unstructured{}
+		ingressConfig.SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "config.openshift.io",
+			Kind:    "Ingress",
+			Version: "v1",
+		})
+
+		cl.Get(context.Background(), client.ObjectKey{
+			Name:      "cluster",
+			Namespace: "",
+		}, ingressConfig)
+
+		domain := ingressConfig.Object["spec"].(map[string]interface{})["domain"]
+
+		log.Info(fmt.Sprintf("Domain: %#v", domain))
+
+		patch := client.MergeFrom(obj.DeepCopy())
+		err = unstructured.SetNestedField(obj.Object, fmt.Sprintf("A: %s %d", domain, i), "spec", "global", "clusterRouterBase")
+		i++
+		if err != nil {
+			return err
+		}
+
+		err = cl.Patch(context.Background(), obj, patch, client.FieldOwner("helm-operator"))
+
+		if err != nil {
+			return err
+		}
+
+		//vals.AsMap()["global"].(map[string]interface{})["clusterRouterBase"] = fmt.Sprintf("A: %s %d", domain, i)
+		//i++
+		//log.Info(fmt.Sprintf("%#v", vals.AsMap()["global"]))
+
+		return nil
+	})
+
 	var (
 		metricsAddr          string
 		leaderElectionID     string
@@ -126,17 +178,16 @@ func main() {
 			reconciler.WithChart(*w.Chart),
 			reconciler.WithGroupVersionKind(w.GroupVersionKind),
 			reconciler.WithOverrideValues(w.OverrideValues),
-			reconciler.SkipDependentWatches(w.WatchDependentResources != nil && !*w.WatchDependentResources),
+			reconciler.SkipDependentWatches(false),
+			//reconciler.SkipDependentWatches(w.WatchDependentResources != nil && !*w.WatchDependentResources),
 			reconciler.WithMaxConcurrentReconciles(maxConcurrentReconciles),
 			reconciler.WithReconcilePeriod(reconcilePeriod),
 			reconciler.WithInstallAnnotations(annotation.DefaultInstallAnnotations...),
 			reconciler.WithUpgradeAnnotations(annotation.DefaultUpgradeAnnotations...),
 			reconciler.WithUninstallAnnotations(annotation.DefaultUninstallAnnotations...),
-			reconciler.WithPreHook(hook.PreHookFunc(func(obj *unstructured.Unstructured, vals chartutil.Values, log logr.Logger) error {
-				vals.AsMap()["global"].(map[string]interface{})["clusterRouterBase"] = "lol"
-				log.Info(fmt.Sprintf("%s", vals.AsMap()))
-				return nil
-			})))
+			//	reconciler.WithOverrideValues(overide),
+			reconciler.WithPreHook(setClusterRouterBase),
+		)
 
 		if err != nil {
 			setupLog.Error(err, "unable to create helm reconciler", "controller", "Helm")
