@@ -11,7 +11,9 @@
         "kind/dependency upgrade"
     ],
     "git-submodules": {
-        "enabled": true
+        "enabled": true,
+        "versioning": "regex:backstage-?(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)?$"
+
     }
    
 }
