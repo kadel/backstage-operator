@@ -12,12 +12,6 @@
     ],
     "git-submodules": {
         "enabled": true
-    },
-    "customManagers": [
-        {   "fileMatch": [".gitmodules"],
-
-            "packageNameTemplate": "https://github.com/janus-idp/helm-backstage",
-            "datasourceTemplate": "git-tags"
-        }
-    ]
+    }
+   
 }
