@@ -1,14 +1,22 @@
 {
     "extends": [
-      "config:js-app",
-      ":gitSignOff",
-      ":rebaseStalePrs",
-      "group:allNonMajor",
-      "group:linters",
-      "group:test"
+        "config:js-app",
+        ":gitSignOff",
+        ":rebaseStalePrs",
+        "group:allNonMajor",
+        "group:linters",
+        "group:test"
     ],
-    "labels": ["kind/dependency upgrade"],
+    "labels": [
+        "kind/dependency upgrade"
+    ],
     "git-submodules": {
         "enabled": true
-      }
-  }
+    },
+    "customManagers": [
+        {
+            "packageNameTemplate": "https://github.com/janus-idp/helm-backstage",
+            "datasourceTemplate": "git-tags"
+        }
+    ]
+}
