@@ -12,7 +12,9 @@
     ],
     "git-submodules": {
         "enabled": true,
-        "versioning": "regex:backstage-(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)?$"
+        "currentValueTemplate": "backstage-{{{currentValue}}}",
+        "datasourceTemplate": "git-tags"
+
 
     }
    
