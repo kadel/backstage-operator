@@ -1,6 +1,6 @@
 # Build the manager binary
 #@follow_tag(registry.redhat.io/rhel9/go-toolset:1.19)
-FROM registry.access.redhat.com/ubi9/go-toolset:1.19 as builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.19.10-14.1696536543 as builder
 USER 0
 ENV GOPATH=/go/
 
@@ -38,7 +38,7 @@ RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -a -o /workspace/manager main
 
 # NOTE: ubi-micro is not be FIPS compliant, if openssl is not installed
 #@follow_tag(registry.redhat.io/ubi9/ubi-micro:9.2)
-FROM registry.access.redhat.com/ubi9/ubi-micro:9.2
+FROM registry.access.redhat.com/ubi9/ubi-micro:9.2-15.1696515526
 
 # Upstream sources
 # Downstream comment
